@@ -1,0 +1,25 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/jerry?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+    username: root
+    password: root
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+logging:
+  level:
+    com.zaxxer.hikari: INFO
+    org.springframework.jdbc: INFO
+
+
+siliconflow:
+  accessKeyID: 'sk-ikbkcokceleimnjbszkftvijplkwhsheztwytamieuvigjrt'
+  chatCompletionUrl: 'https://api.siliconflow.cn/v1/chat/completions'
+  model: 'deepseek-ai/DeepSeek-V3'
+
