@@ -67,10 +67,12 @@ public class RiskManagementServiceImpl implements RiskManagementService {
         double currentStockValue = stock * lastPrice;
         double totalPortfolioValue = cash + currentStockValue;
         double basePositionSize = totalPortfolioValue * 0.25;
-        double maxPositionSize;
-        if (marketRiskScore >= 4) maxPositionSize = basePositionSize * 0.5;
-        else if (marketRiskScore >= 2) maxPositionSize = basePositionSize * 0.75;
-        else maxPositionSize = basePositionSize;
+        double maxPositionAmount;
+        if (marketRiskScore >= 4) maxPositionAmount = basePositionSize * 0.5;
+        else if (marketRiskScore >= 2) maxPositionAmount = basePositionSize * 0.75;
+        else maxPositionAmount = basePositionSize;
+        // 修正：最大持仓币数量
+        double maxPositionSize = lastPrice > 0 ? maxPositionAmount / lastPrice : 0.0;
         // 9. 压力测试
         Map<String, Double> stressScenarios = Map.of(
                 "market_crash", -0.20,
@@ -119,7 +121,8 @@ public class RiskManagementServiceImpl implements RiskManagementService {
         debateAnalysis.put("debate_confidence", debateConfidence);
         debateAnalysis.put("debate_signal", debateSignal);
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("max_position_size", maxPositionSize);
+        result.put("max_position_size", maxPositionSize); // 币数量
+        result.put("max_position_amount", maxPositionAmount); // 金额
         result.put("risk_score", riskScore);
         result.put("trading_action", tradingAction);
         result.put("risk_metrics", riskMetrics);

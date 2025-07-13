@@ -3,7 +3,7 @@
 
 <template>
   <main>
-    <h1>加密货币辩论室</h1>
+    <router-view />
   </main>
 </template>
 

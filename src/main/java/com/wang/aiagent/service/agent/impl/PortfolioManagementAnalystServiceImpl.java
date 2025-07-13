@@ -111,15 +111,39 @@ public class PortfolioManagementAnalystServiceImpl implements PortfolioManagemen
         String action;
         int quantity = 0;
         double confidence = Math.abs(finalScore);
-        if ("buy".equalsIgnoreCase(riskAction)) {
-            action = cash > 0 ? "buy" : "hold";
-            quantity = (int)Math.min(maxPositionSize, cash); // 简化：用现金买入
-        } else if ("sell".equalsIgnoreCase(riskAction)) {
-            action = stock > 0 ? "sell" : "hold";
-            quantity = (int)Math.min(stock, maxPositionSize); // 简化：最多卖出持仓
+        String advice = null;
+        // 新增：无持仓建仓建议逻辑
+        if (cash == 0 && stock == 0) {
+            if (finalScore > 0.5 && "buy".equalsIgnoreCase(riskAction)) {
+                action = "initiate_position";
+                if (maxPositionSize > 0) {
+                    advice = "当前无持仓，市场信号偏多，建议建仓。";
+                    quantity = (int) maxPositionSize;
+                } else {
+                    advice = "当前无持仓且无可用资金，市场信号偏多，建议充值后建仓。";
+                    quantity = 0;
+                }
+            } else if (finalScore < -0.5 && "sell".equalsIgnoreCase(riskAction)) {
+                action = "wait_for_opportunity";
+                advice = "当前无持仓，市场信号偏空，建议继续观望。";
+                quantity = 0;
+            } else {
+                action = "hold";
+                advice = "当前无持仓，市场信号中性，建议观望。";
+                quantity = 0;
+            }
         } else {
-            action = "hold";
-            quantity = 0;
+            if ("buy".equalsIgnoreCase(riskAction)) {
+                action = cash > 0 ? "buy" : "hold";
+                quantity = (int)Math.min(maxPositionSize, cash); // 简化：用现金买入
+            } else if ("sell".equalsIgnoreCase(riskAction)) {
+                action = stock > 0 ? "sell" : "hold";
+                quantity = (int)Math.min(stock, maxPositionSize); // 简化：最多卖出持仓
+            } else {
+                action = "hold";
+                quantity = 0;
+            }
+            advice = null;
         }
         log.info("------------------------------------------------------");
         log.info("technicalSignal: {}", technicalSignal);
@@ -219,6 +243,13 @@ public class PortfolioManagementAnalystServiceImpl implements PortfolioManagemen
         detailedAnalysis.append("操作建议: ").append(signalToChinese(action)).append("\n");
         detailedAnalysis.append("交易数量: ").append(quantity).append("\n");
         detailedAnalysis.append("决策置信度: ").append(String.format("%.0f%%", confidence * 100)).append("\n");
+        // 新增：拼接advice内容
+        if (advice != null && !advice.isEmpty()) {
+            detailedAnalysis.append("特别提示: ").append(advice).append("\n");
+            if ("initiate_position".equals(action) && quantity == 0) {
+                detailedAnalysis.append("当前无资金，建议充值后建仓。\n");
+            }
+        }
         // 决策依据
         detailedAnalysis.append("\n四、决策依据\n");
         detailedAnalysis.append(reasoning).append("\n");
@@ -231,6 +262,7 @@ public class PortfolioManagementAnalystServiceImpl implements PortfolioManagemen
         result.put("confidence", confidence);
         result.put("agent_signals", agentSignals);
         result.put("reasoning", reasoning);
+        result.put("advice", advice);
         result.put("分析报告", detailedAnalysis.toString());
         return result;
     }

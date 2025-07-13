@@ -4,12 +4,15 @@ import com.wang.aiagent.domain.CoinGeckoCoin;
 import com.wang.aiagent.domain.CryptoKline;
 import com.wang.aiagent.domain.agent.TechnicalAnalyst;
 import com.wang.aiagent.domain.vo.CryptoCoinVo;
+import com.wang.aiagent.domain.vo.PortfolioManagementVo;
 import com.wang.aiagent.service.agent.*;
 import com.wang.aiagent.service.utils.CryptoPriceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 import java.util.Map;
@@ -87,11 +90,9 @@ public class CryptoPriceController {
         return macroSymbolAnalystService.getMacroSymbolNews(symbol);
     }
 
-    @GetMapping("/api/getPortfolioManagement")
-    public Object getMacroSymbolNews(@RequestParam(value = "symbol") String symbol,
-                                     @RequestParam(value = "interval") String interval,
-                                     @RequestParam(value = "limit") int limit,
-                                     @RequestParam(value = "portfolio",required = false) Map<String, Object> portfolio){
-        return portfolioManagementAnalystService.getPortfolioManagement(symbol,interval,limit,portfolio);
+    @PostMapping("/api/getPortfolioManagement")
+    public Object getPortfolioManagement(@RequestBody PortfolioManagementVo req) {
+        return portfolioManagementAnalystService.getPortfolioManagement(
+            req.getSymbol(), req.getInterval(), req.getLimit(), req.getPortfolio());
     }
 } 
