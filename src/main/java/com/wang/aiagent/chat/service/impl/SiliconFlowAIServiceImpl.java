@@ -62,7 +62,7 @@ public class SiliconFlowAIServiceImpl extends AbstractChatService implements Ini
         SiliconFlowChatMessage siliconFlowChatMessage  = new SiliconFlowChatMessage();
         siliconFlowChatMessage.setRole("user");
         System.out.println(content);
-        siliconFlowChatMessage.setContent(ChatUtils.macroNewsChat(content));
+        siliconFlowChatMessage.setContent(ChatUtils.macroSymbolNewsChat(content));
         siliconFlowChatMessageList.add(siliconFlowChatMessage);
         siliconFlowParam.setMessages(siliconFlowChatMessageList);
 

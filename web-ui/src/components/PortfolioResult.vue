@@ -40,16 +40,7 @@
           <div v-if="result['分析报告']">
             <h3>分析报告</h3>
             <div class="notion-block-report notion-block-report-rich">
-              <template v-for="(block, idx) in parseReportBlocks(result['分析报告'])" :key="idx">
-                <div v-if="block.type === 'heading'" class="notion-report-heading">{{ block.content }}</div>
-                <ul v-else-if="block.type === 'ul'" class="notion-report-ul">
-                  <li v-for="(item, i) in block.items" :key="i">{{ item }}</li>
-                </ul>
-                <ol v-else-if="block.type === 'ol'" class="notion-report-ol">
-                  <li v-for="(item, i) in block.items" :key="i">{{ item }}</li>
-                </ol>
-                <div v-else class="notion-report-paragraph">{{ block.content }}</div>
-              </template>
+              <div v-html="marked.parse(result['分析报告'])"></div>
             </div>
           </div>
         </div>
@@ -63,6 +54,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { marked } from 'marked'
 
 const result = ref(null)
 
@@ -74,48 +66,6 @@ onMounted(() => {
     result.value = null
   }
 })
-
-// 自动识别小标题、列表
-function parseReportBlocks(report) {
-  if (!report) return []
-  const lines = report.split(/\n+/)
-  const blocks = []
-  let i = 0
-  while (i < lines.length) {
-    let line = lines[i].trim()
-    if (!line) { i++; continue }
-    // 小标题：#、【、（一）、1.1.、等
-    if (/^(#|【|（[一二三四五六七八九十]）|[一二三四五六七八九十]、|\d+\.\d+|\d+、|\d+\.)/.test(line)) {
-      blocks.push({ type: 'heading', content: line.replace(/^#\s*/, '') })
-      i++
-      continue
-    }
-    // 无序列表
-    if (/^(-|\*|•)\s+/.test(line)) {
-      const items = []
-      while (i < lines.length && /^(-|\*|•)\s+/.test(lines[i].trim())) {
-        items.push(lines[i].replace(/^(-|\*|•)\s+/, ''))
-        i++
-      }
-      blocks.push({ type: 'ul', items })
-      continue
-    }
-    // 有序列表
-    if (/^\d+\.\s+/.test(line)) {
-      const items = []
-      while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) {
-        items.push(lines[i].replace(/^\d+\.\s+/, ''))
-        i++
-      }
-      blocks.push({ type: 'ol', items })
-      continue
-    }
-    // 普通段落
-    blocks.push({ type: 'paragraph', content: line })
-    i++
-  }
-  return blocks
-}
 </script>
 
 <style scoped>

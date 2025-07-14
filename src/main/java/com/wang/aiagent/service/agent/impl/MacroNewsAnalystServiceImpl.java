@@ -67,6 +67,24 @@ public class MacroNewsAnalystServiceImpl implements MacroNewsAnalystService {
         if (errorMsg != null) {
             result.put("error", errorMsg);
         }
+        // 智能置信度算法
+        double confidence = 0.2;
+        if (result.containsKey("newsList") && result.get("newsList") instanceof List) {
+            List<?> newsList1 = (List<?>) result.get("newsList");
+            int total = newsList1.size();
+            int positive = 0;
+            for (Object newsObj : newsList1) {
+                if (newsObj instanceof Map) {
+                    Map<?, ?> newsMap = (Map<?, ?>) newsObj;
+                    Object titleObj = newsMap.get("title");
+                    String title = titleObj != null ? titleObj.toString().toLowerCase() : "";
+                    if (title.contains("涨") || title.contains("rise") || title.contains("突破") || title.contains("record high") || title.contains("bull")) positive++;
+                }
+            }
+            if (total > 0) confidence = Math.min(1.0, 0.2 + 0.6 * ((double) positive / total) + 0.2 * Math.log10(total + 1));
+        }
+        result.put("confidence", confidence);
+        if (!result.containsKey("signal")) result.put("signal", "neutral");
         return result;
     }
 }

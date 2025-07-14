@@ -71,6 +71,17 @@ public class DebateRoomAnalystServiceImpl implements DebateRoomAnalystService {
         result.put("llm_score", llmScore);
         result.put("hybrid_diff", hybridDiff);
         result.put("suggestion", suggestion);
+        // 补充标准信号字段
+        // 智能置信度算法
+        double confidence = 0.3;
+        if (result.containsKey("debate_confidence")) {
+            try {
+                confidence = Double.parseDouble(result.get("debate_confidence").toString());
+                confidence = Math.max(0.0, Math.min(1.0, confidence));
+            } catch (Exception e) { /* ignore */ }
+        }
+        result.put("confidence", confidence);
+        if (!result.containsKey("signal")) result.put("signal", "neutral");
         return result;
     }
 

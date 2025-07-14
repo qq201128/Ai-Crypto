@@ -128,6 +128,22 @@ public class RiskManagementServiceImpl implements RiskManagementService {
         result.put("risk_metrics", riskMetrics);
         result.put("debate_analysis", debateAnalysis);
         result.put("reasoning", String.format("Risk Score %d/10: Market Risk=%d, Volatility=%.2f%%, VaR=%.2f%%, Max Drawdown=%.2f%%, Debate Signal=%s", riskScore, marketRiskScore, volatility * 100, var95 * 100, maxDrawdown * 100, debateSignal));
+        // 智能置信度算法
+        double confidence = 0.3;
+        if (result.containsKey("risk_score")) {
+            try {
+                double riskScore1 = Double.parseDouble(result.get("risk_score").toString());
+                confidence = Math.max(0.0, Math.min(1.0, 1.0 - riskScore1 / 10.0));
+            } catch (Exception e) { /* ignore */ }
+        }
+        result.put("confidence", confidence);
+        if (!result.containsKey("signal")) {
+            String action = result.getOrDefault("trading_action", "hold").toString();
+            String signal = "neutral";
+            if ("buy".equalsIgnoreCase(action)) signal = "bullish";
+            else if ("sell".equalsIgnoreCase(action)) signal = "bearish";
+            result.put("signal", signal);
+        }
         return result;
     }
 

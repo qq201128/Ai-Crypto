@@ -92,6 +92,27 @@ public class MacroSymbolAnalystServiceImpl implements MacroSymbolAnalystService 
         if (errorMsg != null) {
             result.put("error", errorMsg);
         }
+        // 智能置信度算法
+        double confidence = 0.2;
+        if (result.containsKey("analysis") && result.get("analysis") instanceof Map) {
+            Map<String, Object> analysis = (Map<String, Object>) result.get("analysis");
+            if (analysis.containsKey("key_factors")) {
+                Object kf = analysis.get("key_factors");
+                if (kf instanceof List) {
+                    int count = ((List<?>) kf).size();
+                    confidence = Math.min(1.0, 0.3 + 0.1 * count); // 越多因素，置信度越高
+                }
+            }
+            if (analysis.containsKey("macro_environment")) {
+                String env = analysis.get("macro_environment").toString().toLowerCase();
+                if (env.contains("positive") || env.contains("乐观")) confidence += 0.2;
+                if (env.contains("negative") || env.contains("悲观")) confidence -= 0.1;
+                confidence = Math.max(0.0, Math.min(1.0, confidence));
+            }
+        }
+        result.put("confidence", confidence);
+        // 补充标准信号字段
+        if (!result.containsKey("signal")) result.put("signal", "neutral");
         return result;
     }
 }

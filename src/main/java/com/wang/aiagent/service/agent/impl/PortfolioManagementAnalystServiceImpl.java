@@ -1,10 +1,13 @@
 package com.wang.aiagent.service.agent.impl;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.wang.aiagent.service.agent.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Type;
 import java.util.*;
 
 @Slf4j
@@ -83,23 +86,34 @@ public class PortfolioManagementAnalystServiceImpl implements PortfolioManagemen
             agentSignals.add(buildAgentSignal("debate_room", debateSignal));
         }
 
-        // 5. 权重分配（可根据Python实现调整）
-        double valuationWeight = 0.3;
-        double fundamentalWeight = 0.25;
-        double technicalWeight = 0.2;
-        double macroWeight = 0.15;
-        double sentimentWeight = 0.1;
+        // 5. 权重分配（全分析师）
+        Map<String, Double> weights = new LinkedHashMap<>();
+        weights.put("technical_analysis", 0.20);
+        weights.put("fundamental_analysis", 0.20);
+        weights.put("sentiment_analysis", 0.10);
+        weights.put("valuation_analysis", 0.15);
+        weights.put("risk_management", 0.10);
+        weights.put("selected_stock_macro_analysis", 0.10);
+        weights.put("market_wide_news_summary", 0.10);
+        weights.put("debate_room", 0.05);
 
-        // 6. 信号加权汇总（简化版，实际可更复杂）
-        double score = 0;
+        // 6. 信号加权汇总（全分析师）
+        double weightedScore = 0;
         double totalWeight = 0;
-        score += getSignalScore(valuationSignal) * valuationWeight; totalWeight += valuationWeight;
-        score += getSignalScore(fundamentalSignal) * fundamentalWeight; totalWeight += fundamentalWeight;
-        score += getSignalScore(technicalSignal) * technicalWeight; totalWeight += technicalWeight;
-        score += getSignalScore(macroSymbolSignal) * macroWeight * 0.5; totalWeight += macroWeight * 0.5;
-        score += getSignalScore(macroNewsSignal) * macroWeight * 0.5; totalWeight += macroWeight * 0.5;
-        score += getSignalScore(sentimentSignal) * sentimentWeight; totalWeight += sentimentWeight;
-        double finalScore = totalWeight > 0 ? score / totalWeight : 0;
+        for (Map<String, Object> sig : agentSignals) {
+            String agent = (String) sig.get("agent_name");
+            double weight = weights.getOrDefault(agent, 0.0);
+            double confidence = 0.0;
+            Object confObj = sig.getOrDefault("confidence", 0.0);
+            if (confObj instanceof Number) confidence = ((Number) confObj).doubleValue();
+            else {
+                try { confidence = Double.parseDouble(confObj.toString()); } catch (Exception e) { confidence = 0.0; }
+            }
+            double score = getSignalScore(sig);
+            weightedScore += score * confidence * weight;
+            totalWeight += confidence * weight;
+        }
+        double finalScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
 
         // 7. 风险约束
         String riskAction = riskSignal != null ? (String) riskSignal.getOrDefault("trading_action", "hold") : "hold";
@@ -156,104 +170,182 @@ public class PortfolioManagementAnalystServiceImpl implements PortfolioManagemen
         log.info("------------------------------------------------------");
 
         // 8. 决策说明
-        String reasoning = String.format("综合各分析师信号，权重加权后得分%.2f，风险管理建议操作：%s，最大持仓：%.2f。", finalScore, riskAction, maxPositionSize);
+        String reasoning = String.format("综合所有分析师信号，置信度加权后得分%.2f，风险管理建议操作：%s，最大持仓：%.2f。", finalScore, riskAction, maxPositionSize);
 
-        // 8.1 详细分析报告拼接
+        // 8.1 详细分析报告拼接（Markdown美化版）
         StringBuilder detailedAnalysis = new StringBuilder();
-        detailedAnalysis.append("====================================\n");
-        detailedAnalysis.append("          投资分析报告\n");
-        detailedAnalysis.append("====================================\n\n");
-        // 基本面分析
-        detailedAnalysis.append("一、策略分析\n\n");
-        detailedAnalysis.append("1. 基本面分析 (权重25%):\n");
-        detailedAnalysis.append("   信号: ").append(signalToChinese(fundamentalSignal != null ? fundamentalSignal.getOrDefault("signal", "无数据") : "无数据")).append("\n");
-        detailedAnalysis.append("   置信度: ").append(fundamentalSignal != null && fundamentalSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)fundamentalSignal.get("confidence")).doubleValue() * 100) : "0%").append("\n");
-        Map<String, Object> fStrategy = fundamentalSignal != null ? (Map<String, Object>) fundamentalSignal.get("strategy_signals") : null;
-        detailedAnalysis.append("   要点:\n");
-        if (fStrategy != null) {
-            detailedAnalysis.append("   - 估值: ").append(fStrategy.getOrDefault("valuation", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - 流动性: ").append(fStrategy.getOrDefault("liquidity", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - 稀缺性: ").append(fStrategy.getOrDefault("scarcity", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - 历史表现: ").append(fStrategy.getOrDefault("history", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - 波动性: ").append(fStrategy.getOrDefault("volatility", Collections.emptyMap())).append("\n");
-        } else {
-            detailedAnalysis.append("   - 无数据\n");
-        }
-        // 估值分析
-        detailedAnalysis.append("\n2. 估值分析 (权重30%):\n");
-        detailedAnalysis.append("   信号: ").append(signalToChinese(valuationSignal != null ? valuationSignal.getOrDefault("signal", "无数据") : "无数据")).append("\n");
-        detailedAnalysis.append("   置信度: ").append(valuationSignal != null && valuationSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)valuationSignal.get("confidence")).doubleValue() * 100) : "0%").append("\n");
-        Map<String, Object> vStrategy = valuationSignal != null ? (Map<String, Object>) valuationSignal.get("strategy_signals") : null;
-        detailedAnalysis.append("   要点:\n");
-        if (vStrategy != null) {
-            detailedAnalysis.append("   - 市值: ").append(vStrategy.getOrDefault("market_cap", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - FDV: ").append(vStrategy.getOrDefault("fdv", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - PE: ").append(vStrategy.getOrDefault("pe", Collections.emptyMap())).append("\n");
-        } else {
-            detailedAnalysis.append("   - 无数据\n");
-        }
-        // 技术分析
-        detailedAnalysis.append("\n3. 技术分析 (权重20%):\n");
-        detailedAnalysis.append("   信号: ").append(signalToChinese(technicalSignal != null ? technicalSignal.getOrDefault("signal", "无数据") : "无数据")).append("\n");
-        detailedAnalysis.append("   置信度: ").append(technicalSignal != null && technicalSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)technicalSignal.get("confidence")).doubleValue() * 100) : "0%").append("\n");
-        Map<String, Object> tStrategy = technicalSignal != null ? (Map<String, Object>) technicalSignal.get("strategy_signals") : null;
-        detailedAnalysis.append("   要点:\n");
-        if (tStrategy != null) {
-            detailedAnalysis.append("   - 趋势跟踪: ").append(tStrategy.getOrDefault("trend_following", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - 均值回归: ").append(tStrategy.getOrDefault("mean_reversion", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - 动量: ").append(tStrategy.getOrDefault("momentum", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - 波动率: ").append(tStrategy.getOrDefault("volatility", Collections.emptyMap())).append("\n");
-        } else {
-            detailedAnalysis.append("   - 无数据\n");
-        }
-        // 宏观分析
-        detailedAnalysis.append("\n4. 宏观分析 (权重15%):\n");
-        detailedAnalysis.append("   个股宏观: ").append(macroSymbolSignal != null ? macroSymbolSignal.getOrDefault("analysis", "无数据") : "无数据").append("\n");
-        detailedAnalysis.append("   大盘宏观: ").append(macroNewsSignal != null ? macroNewsSignal.getOrDefault("analysis", "无数据") : "无数据").append("\n");
-        // 情绪分析
-        detailedAnalysis.append("\n5. 情绪分析 (权重10%):\n");
-        detailedAnalysis.append("   信号: ").append(signalToChinese(sentimentSignal != null ? sentimentSignal.getOrDefault("signal", "无数据") : "无数据")).append("\n");
-        detailedAnalysis.append("   置信度: ").append(sentimentSignal != null && sentimentSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)sentimentSignal.get("confidence")).doubleValue() * 100) : "0%").append("\n");
-        Map<String, Object> sStrategy = sentimentSignal != null ? (Map<String, Object>) sentimentSignal.get("strategy_signals") : null;
-        detailedAnalysis.append("   要点:\n");
-        if (sStrategy != null) {
-            detailedAnalysis.append("   - 情绪: ").append(sStrategy.getOrDefault("sentiment", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - Galaxy: ").append(sStrategy.getOrDefault("galaxy", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - 社交主导: ").append(sStrategy.getOrDefault("social_dominance", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - 推文: ").append(sStrategy.getOrDefault("tweets", Collections.emptyMap())).append("\n");
-            detailedAnalysis.append("   - Github: ").append(sStrategy.getOrDefault("github_commits", Collections.emptyMap())).append("\n");
-        } else {
-            detailedAnalysis.append("   - 无数据\n");
-        }
-        // 风险评估
-        detailedAnalysis.append("\n二、风险评估\n");
-        if (riskSignal != null) {
-            detailedAnalysis.append("风险评分: ").append(riskSignal.getOrDefault("risk_score", "无数据")).append("/10\n");
-            Map<String, Object> riskMetrics = (Map<String, Object>) riskSignal.getOrDefault("risk_metrics", Collections.emptyMap());
-            detailedAnalysis.append("主要指标:\n");
-            detailedAnalysis.append("- 波动率: ").append(String.format("%.2f%%", riskMetrics.getOrDefault("volatility", 0.0))).append("\n");
-            detailedAnalysis.append("- 最大回撤: ").append(String.format("%.2f%%", riskMetrics.getOrDefault("max_drawdown", 0.0))).append("\n");
-            detailedAnalysis.append("- VaR(95%): ").append(String.format("%.2f%%", riskMetrics.getOrDefault("value_at_risk_95", 0.0))).append("\n");
-            detailedAnalysis.append("- 市场风险: ").append(riskMetrics.getOrDefault("market_risk_score", "无数据")).append("/10\n");
-        } else {
-            detailedAnalysis.append("无风险数据\n");
-        }
-        // 投资建议
-        detailedAnalysis.append("\n三、投资建议\n");
-        detailedAnalysis.append("操作建议: ").append(signalToChinese(action)).append("\n");
-        detailedAnalysis.append("交易数量: ").append(quantity).append("\n");
-        detailedAnalysis.append("决策置信度: ").append(String.format("%.0f%%", confidence * 100)).append("\n");
-        // 新增：拼接advice内容
+        // 核心摘要
+        detailedAnalysis.append("# 📊 投资分析报告\n\n");
+        detailedAnalysis.append("**操作建议：** `" + signalToChinese(action) + "`  ");
+        detailedAnalysis.append("**交易数量：** `" + quantity + "`  ");
+        detailedAnalysis.append("**决策置信度：** `" + String.format("%.0f%%", confidence * 100) + "`  ");
         if (advice != null && !advice.isEmpty()) {
-            detailedAnalysis.append("特别提示: ").append(advice).append("\n");
-            if ("initiate_position".equals(action) && quantity == 0) {
-                detailedAnalysis.append("当前无资金，建议充值后建仓。\n");
-            }
+            detailedAnalysis.append("**特别提示：** " + advice + "  \n");
         }
+        detailedAnalysis.append("---\n\n");
+
+        // 精简版分析师信号分节
+        detailedAnalysis.append("## 👥 分析师核心结论\n\n");
+        // 技术分析师
+        detailedAnalysis.append("### 技术分析师\n");
+        if (technicalSignal != null) {
+            detailedAnalysis.append("- **信号：** " + signalToChinese(technicalSignal.getOrDefault("signal", "无数据")) + "\n");
+            detailedAnalysis.append("- **置信度：** " + (technicalSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)technicalSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
+            String reason = technicalSignal.get("analysis") != null ? technicalSignal.get("analysis").toString() : null;
+            if (reason == null && technicalSignal.get("thesis") != null) reason = technicalSignal.get("thesis").toString();
+            if (reason != null && !reason.isEmpty()) {
+                detailedAnalysis.append("- **理由：** " + reason + "\n");
+            }
+        } else {
+            detailedAnalysis.append("- 无数据\n");
+        }
+        detailedAnalysis.append("\n");
+        // 基本面分析师
+        detailedAnalysis.append("### 基本面分析师\n");
+        if (fundamentalSignal != null) {
+            detailedAnalysis.append("- **信号：** " + signalToChinese(fundamentalSignal.getOrDefault("signal", "无数据")) + "\n");
+            detailedAnalysis.append("- **置信度：** " + (fundamentalSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)fundamentalSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
+            String reason = fundamentalSignal.get("analysis") != null ? fundamentalSignal.get("analysis").toString() : null;
+            if (reason == null && fundamentalSignal.get("thesis") != null) reason = fundamentalSignal.get("thesis").toString();
+            if (reason != null && !reason.isEmpty()) {
+                detailedAnalysis.append("- **理由：** " + reason + "\n");
+            }
+        } else {
+            detailedAnalysis.append("- 无数据\n");
+        }
+        detailedAnalysis.append("\n");
+        // 情绪分析师
+        detailedAnalysis.append("### 情绪分析师\n");
+        if (sentimentSignal != null) {
+            detailedAnalysis.append("- **信号：** " + signalToChinese(sentimentSignal.getOrDefault("signal", "无数据")) + "\n");
+            detailedAnalysis.append("- **置信度：** " + (sentimentSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)sentimentSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
+            String reason = sentimentSignal.get("analysis") != null ? sentimentSignal.get("analysis").toString() : null;
+            if (reason == null && sentimentSignal.get("thesis") != null) reason = sentimentSignal.get("thesis").toString();
+            if (reason != null && !reason.isEmpty()) {
+                detailedAnalysis.append("- **理由：** " + reason + "\n");
+            }
+        } else {
+            detailedAnalysis.append("- 无数据\n");
+        }
+        detailedAnalysis.append("\n");
+        // 估值分析师
+        detailedAnalysis.append("### 估值分析师\n");
+        if (valuationSignal != null) {
+            detailedAnalysis.append("- **信号：** " + signalToChinese(valuationSignal.getOrDefault("signal", "无数据")) + "\n");
+            detailedAnalysis.append("- **置信度：** " + (valuationSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)valuationSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
+            String reason = valuationSignal.get("analysis") != null ? valuationSignal.get("analysis").toString() : null;
+            if (reason == null && valuationSignal.get("thesis") != null) reason = valuationSignal.get("thesis").toString();
+            if (reason != null && !reason.isEmpty()) {
+                detailedAnalysis.append("- **理由：** " + reason + "\n");
+            }
+        } else {
+            detailedAnalysis.append("- 无数据\n");
+        }
+        detailedAnalysis.append("\n");
+        // 宏观分析师（个股）
+        detailedAnalysis.append("### 宏观分析师（个股）\n");
+        if (macroSymbolSignal != null) {
+            detailedAnalysis.append("- **信号：** " + signalToChinese(macroSymbolSignal.getOrDefault("signal", "无数据")) + "\n");
+            detailedAnalysis.append("- **置信度：** " + (macroSymbolSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)macroSymbolSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
+            String reason = null;
+            Object analysisObj = macroSymbolSignal.get("analysis");
+            if (analysisObj instanceof Map) {
+                Object reasoningObj = ((Map<?, ?>) analysisObj).get("reasoning");
+                if (reasoningObj != null) reason = reasoningObj.toString();
+            } else if (analysisObj instanceof String) {
+                try {
+                    Gson gson = new Gson();
+                    Type type = new TypeToken<Map<String, Object>>(){}.getType();
+                    Map<String, Object> analysisMap = gson.fromJson((String) analysisObj, type);
+                    Object reasoningObj = analysisMap.get("reasoning");
+                    if (reasoningObj != null) reason = reasoningObj.toString();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            if (reason != null && !reason.isEmpty()) {
+                detailedAnalysis.append("- **理由：** " + reason + "\n");
+            }
+        } else {
+            detailedAnalysis.append("- 无数据\n");
+        }
+        detailedAnalysis.append("\n");
+        // 宏观分析师（大盘）
+        detailedAnalysis.append("### 宏观分析师（大盘）\n");
+        if (macroNewsSignal != null) {
+            detailedAnalysis.append("- **信号：** " + signalToChinese(macroNewsSignal.getOrDefault("signal", "无数据")) + "\n");
+            detailedAnalysis.append("- **置信度：** " + (macroNewsSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)macroNewsSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
+            String reason = null;
+            Object analysisObj = macroSymbolSignal.get("analysis");
+            if (analysisObj instanceof Map) {
+                Object reasoningObj = ((Map<?, ?>) analysisObj).get("reasoning");
+                if (reasoningObj != null) reason = reasoningObj.toString();
+            } else if (analysisObj instanceof String) {
+                try {
+                    Gson gson = new Gson();
+                    Type type = new TypeToken<Map<String, Object>>(){}.getType();
+                    Map<String, Object> analysisMap = gson.fromJson((String) analysisObj, type);
+                    Object reasoningObj = analysisMap.get("reasoning");
+                    if (reasoningObj != null) reason = reasoningObj.toString();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            if (reason != null && !reason.isEmpty()) {
+                detailedAnalysis.append("- **理由：** " + reason + "\n");
+            }
+        } else {
+            detailedAnalysis.append("- 无数据\n");
+        }
+        detailedAnalysis.append("\n");
+        // 风险管理分析师
+        detailedAnalysis.append("### 风险管理分析师\n");
+        if (riskSignal != null) {
+            detailedAnalysis.append("- **信号：** " + signalToChinese(riskSignal.getOrDefault("signal", "无数据")) + "\n");
+            detailedAnalysis.append("- **置信度：** " + (riskSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)riskSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
+            String reason = riskSignal.get("analysis") != null ? riskSignal.get("analysis").toString() : null;
+            if (reason == null && riskSignal.get("reasoning") != null) reason = riskSignal.get("reasoning").toString();
+            if (reason != null && !reason.isEmpty()) {
+                detailedAnalysis.append("- **理由：** " + reason + "\n");
+            }
+        } else {
+            detailedAnalysis.append("- 无数据\n");
+        }
+        detailedAnalysis.append("\n");
+        // 辩论室分析师
+        detailedAnalysis.append("### 辩论室分析师\n");
+        if (debateSignal != null) {
+            detailedAnalysis.append("- **建议：** " + debateSignal.getOrDefault("suggestion", "无数据") + "\n");
+            String reason = null;
+            Object analysisObj = macroSymbolSignal.get("debate_summary");
+            if (analysisObj instanceof Map) {
+                Object reasoningObj = ((Map<?, ?>) analysisObj).get("reasoning");
+                if (reasoningObj != null) reason = reasoningObj.toString();
+            } else if (analysisObj instanceof String) {
+                try {
+                    Gson gson = new Gson();
+                    Type type = new TypeToken<Map<String, Object>>(){}.getType();
+                    Map<String, Object> analysisMap = gson.fromJson((String) analysisObj, type);
+                    Object reasoningObj = analysisMap.get("reasoning");
+                    if (reasoningObj != null) reason = reasoningObj.toString();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            if (reason != null && !reason.isEmpty()) {
+                detailedAnalysis.append("- **理由：** " + reason + "\n");
+            }
+
+        } else {
+            detailedAnalysis.append("- 无数据\n");
+        }
+        detailedAnalysis.append("\n---\n\n");
+
         // 决策依据
-        detailedAnalysis.append("\n四、决策依据\n");
-        detailedAnalysis.append(reasoning).append("\n");
-        detailedAnalysis.append("====================================\n");
+        detailedAnalysis.append("## 📝 决策依据\n");
+        detailedAnalysis.append(reasoning + "\n");
+        detailedAnalysis.append("\n---\n");
+
 
         // 9. 返回结构
         Map<String, Object> result = new LinkedHashMap<>();
