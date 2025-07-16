@@ -184,140 +184,58 @@ public class PortfolioManagementAnalystServiceImpl implements PortfolioManagemen
         }
         detailedAnalysis.append("---\n\n");
 
-        // 精简版分析师信号分节
+        // 分析师分节配置
+        List<Map<String, Object>> analystSections = new ArrayList<>();
+        Map<String, Object> section1 = new HashMap<>();
+        section1.put("title", "技术分析师");
+        section1.put("signal", technicalSignal);
+        section1.put("type", "default");
+        analystSections.add(section1);
+        Map<String, Object> section2 = new HashMap<>();
+        section2.put("title", "基本面分析师");
+        section2.put("signal", fundamentalSignal);
+        section2.put("type", "default");
+        analystSections.add(section2);
+        Map<String, Object> section3 = new HashMap<>();
+        section3.put("title", "情绪分析师");
+        section3.put("signal", sentimentSignal);
+        section3.put("type", "default");
+        analystSections.add(section3);
+        Map<String, Object> section4 = new HashMap<>();
+        section4.put("title", "估值分析师");
+        section4.put("signal", valuationSignal);
+        section4.put("type", "default");
+        analystSections.add(section4);
+        Map<String, Object> section5 = new HashMap<>();
+        section5.put("title", "宏观分析师（个股）");
+        section5.put("signal", macroSymbolSignal);
+        section5.put("type", "macro");
+        analystSections.add(section5);
+        Map<String, Object> section6 = new HashMap<>();
+        section6.put("title", "宏观分析师（大盘）");
+        section6.put("signal", macroNewsSignal);
+        section6.put("type", "macro");
+        analystSections.add(section6);
+        Map<String, Object> section7 = new HashMap<>();
+        section7.put("title", "风险管理分析师");
+        section7.put("signal", riskSignal);
+        section7.put("type", "risk");
+        analystSections.add(section7);
+
         detailedAnalysis.append("## 👥 分析师核心结论\n\n");
-        // 技术分析师
-        detailedAnalysis.append("### 技术分析师\n");
-        if (technicalSignal != null) {
-            detailedAnalysis.append("- **信号：** " + signalToChinese(technicalSignal.getOrDefault("signal", "无数据")) + "\n");
-            detailedAnalysis.append("- **置信度：** " + (technicalSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)technicalSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
-            String reason = technicalSignal.get("analysis") != null ? technicalSignal.get("analysis").toString() : null;
-            if (reason == null && technicalSignal.get("thesis") != null) reason = technicalSignal.get("thesis").toString();
-            if (reason != null && !reason.isEmpty()) {
-                detailedAnalysis.append("- **理由：** " + reason + "\n");
-            }
-        } else {
-            detailedAnalysis.append("- 无数据\n");
+        for (Map<String, Object> section : analystSections) {
+            detailedAnalysis.append(generateAnalystSection(
+                (String) section.get("title"),
+                section.get("signal"),
+                (String) section.get("type")
+            ));
         }
-        detailedAnalysis.append("\n");
-        // 基本面分析师
-        detailedAnalysis.append("### 基本面分析师\n");
-        if (fundamentalSignal != null) {
-            detailedAnalysis.append("- **信号：** " + signalToChinese(fundamentalSignal.getOrDefault("signal", "无数据")) + "\n");
-            detailedAnalysis.append("- **置信度：** " + (fundamentalSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)fundamentalSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
-            String reason = fundamentalSignal.get("analysis") != null ? fundamentalSignal.get("analysis").toString() : null;
-            if (reason == null && fundamentalSignal.get("thesis") != null) reason = fundamentalSignal.get("thesis").toString();
-            if (reason != null && !reason.isEmpty()) {
-                detailedAnalysis.append("- **理由：** " + reason + "\n");
-            }
-        } else {
-            detailedAnalysis.append("- 无数据\n");
-        }
-        detailedAnalysis.append("\n");
-        // 情绪分析师
-        detailedAnalysis.append("### 情绪分析师\n");
-        if (sentimentSignal != null) {
-            detailedAnalysis.append("- **信号：** " + signalToChinese(sentimentSignal.getOrDefault("signal", "无数据")) + "\n");
-            detailedAnalysis.append("- **置信度：** " + (sentimentSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)sentimentSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
-            String reason = sentimentSignal.get("analysis") != null ? sentimentSignal.get("analysis").toString() : null;
-            if (reason == null && sentimentSignal.get("thesis") != null) reason = sentimentSignal.get("thesis").toString();
-            if (reason != null && !reason.isEmpty()) {
-                detailedAnalysis.append("- **理由：** " + reason + "\n");
-            }
-        } else {
-            detailedAnalysis.append("- 无数据\n");
-        }
-        detailedAnalysis.append("\n");
-        // 估值分析师
-        detailedAnalysis.append("### 估值分析师\n");
-        if (valuationSignal != null) {
-            detailedAnalysis.append("- **信号：** " + signalToChinese(valuationSignal.getOrDefault("signal", "无数据")) + "\n");
-            detailedAnalysis.append("- **置信度：** " + (valuationSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)valuationSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
-            String reason = valuationSignal.get("analysis") != null ? valuationSignal.get("analysis").toString() : null;
-            if (reason == null && valuationSignal.get("thesis") != null) reason = valuationSignal.get("thesis").toString();
-            if (reason != null && !reason.isEmpty()) {
-                detailedAnalysis.append("- **理由：** " + reason + "\n");
-            }
-        } else {
-            detailedAnalysis.append("- 无数据\n");
-        }
-        detailedAnalysis.append("\n");
-        // 宏观分析师（个股）
-        detailedAnalysis.append("### 宏观分析师（个股）\n");
-        if (macroSymbolSignal != null) {
-            detailedAnalysis.append("- **信号：** " + signalToChinese(macroSymbolSignal.getOrDefault("signal", "无数据")) + "\n");
-            detailedAnalysis.append("- **置信度：** " + (macroSymbolSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)macroSymbolSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
-            String reason = null;
-            Object analysisObj = macroSymbolSignal.get("analysis");
-            if (analysisObj instanceof Map) {
-                Object reasoningObj = ((Map<?, ?>) analysisObj).get("reasoning");
-                if (reasoningObj != null) reason = reasoningObj.toString();
-            } else if (analysisObj instanceof String) {
-                try {
-                    Gson gson = new Gson();
-                    Type type = new TypeToken<Map<String, Object>>(){}.getType();
-                    Map<String, Object> analysisMap = gson.fromJson((String) analysisObj, type);
-                    Object reasoningObj = analysisMap.get("reasoning");
-                    if (reasoningObj != null) reason = reasoningObj.toString();
-                } catch (Exception e) {
-                    // ignore
-                }
-            }
-            if (reason != null && !reason.isEmpty()) {
-                detailedAnalysis.append("- **理由：** " + reason + "\n");
-            }
-        } else {
-            detailedAnalysis.append("- 无数据\n");
-        }
-        detailedAnalysis.append("\n");
-        // 宏观分析师（大盘）
-        detailedAnalysis.append("### 宏观分析师（大盘）\n");
-        if (macroNewsSignal != null) {
-            detailedAnalysis.append("- **信号：** " + signalToChinese(macroNewsSignal.getOrDefault("signal", "无数据")) + "\n");
-            detailedAnalysis.append("- **置信度：** " + (macroNewsSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)macroNewsSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
-            String reason = null;
-            Object analysisObj = macroSymbolSignal.get("analysis");
-            if (analysisObj instanceof Map) {
-                Object reasoningObj = ((Map<?, ?>) analysisObj).get("reasoning");
-                if (reasoningObj != null) reason = reasoningObj.toString();
-            } else if (analysisObj instanceof String) {
-                try {
-                    Gson gson = new Gson();
-                    Type type = new TypeToken<Map<String, Object>>(){}.getType();
-                    Map<String, Object> analysisMap = gson.fromJson((String) analysisObj, type);
-                    Object reasoningObj = analysisMap.get("reasoning");
-                    if (reasoningObj != null) reason = reasoningObj.toString();
-                } catch (Exception e) {
-                    // ignore
-                }
-            }
-            if (reason != null && !reason.isEmpty()) {
-                detailedAnalysis.append("- **理由：** " + reason + "\n");
-            }
-        } else {
-            detailedAnalysis.append("- 无数据\n");
-        }
-        detailedAnalysis.append("\n");
-        // 风险管理分析师
-        detailedAnalysis.append("### 风险管理分析师\n");
-        if (riskSignal != null) {
-            detailedAnalysis.append("- **信号：** " + signalToChinese(riskSignal.getOrDefault("signal", "无数据")) + "\n");
-            detailedAnalysis.append("- **置信度：** " + (riskSignal.get("confidence") != null ? String.format("%.0f%%", ((Number)riskSignal.get("confidence")).doubleValue() * 100) : "0%") + "\n");
-            String reason = riskSignal.get("analysis") != null ? riskSignal.get("analysis").toString() : null;
-            if (reason == null && riskSignal.get("reasoning") != null) reason = riskSignal.get("reasoning").toString();
-            if (reason != null && !reason.isEmpty()) {
-                detailedAnalysis.append("- **理由：** " + reason + "\n");
-            }
-        } else {
-            detailedAnalysis.append("- 无数据\n");
-        }
-        detailedAnalysis.append("\n");
-        // 辩论室分析师
+        // 辩论室分析师单独处理
         detailedAnalysis.append("### 辩论室分析师\n");
         if (debateSignal != null) {
             detailedAnalysis.append("- **建议：** " + debateSignal.getOrDefault("suggestion", "无数据") + "\n");
             String reason = null;
-            Object analysisObj = macroSymbolSignal.get("debate_summary");
+            Object analysisObj = debateSignal.get("debate_summary");
             if (analysisObj instanceof Map) {
                 Object reasoningObj = ((Map<?, ?>) analysisObj).get("reasoning");
                 if (reasoningObj != null) reason = reasoningObj.toString();
@@ -335,7 +253,6 @@ public class PortfolioManagementAnalystServiceImpl implements PortfolioManagemen
             if (reason != null && !reason.isEmpty()) {
                 detailedAnalysis.append("- **理由：** " + reason + "\n");
             }
-
         } else {
             detailedAnalysis.append("- 无数据\n");
         }
@@ -399,5 +316,78 @@ public class PortfolioManagementAnalystServiceImpl implements PortfolioManagemen
             case "bearish": return "看跌";
             default: return signal;
         }
+    }
+
+    // 新增：分析师分节生成工具方法
+    /**
+     * 生成分析师分节Markdown
+     * @param title 分析师标题
+     * @param signalObj 信号对象
+     * @param type 分析师类型（default/macro/risk）
+     * @return Markdown字符串
+     */
+    private String generateAnalystSection(String title, Object signalObj, String type) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("### ").append(title).append("\n");
+        if (signalObj == null) {
+            sb.append("- 无数据\n\n");
+            return sb.toString();
+        }
+        Map<String, Object> signal = null;
+        if (signalObj instanceof Map) {
+            signal = (Map<String, Object>) signalObj;
+        } else {
+            // 支持信号为JSON字符串
+            try {
+                Gson gson = new Gson();
+                Type t = new TypeToken<Map<String, Object>>(){}.getType();
+                signal = gson.fromJson(signalObj.toString(), t);
+            } catch (Exception e) {
+                sb.append("- 数据格式错误\n\n");
+                return sb.toString();
+            }
+        }
+        // 信号
+        sb.append("- **信号：** ").append(signalToChinese(signal.getOrDefault("signal", "无数据"))).append("\n");
+        // 置信度
+        Object conf = signal.get("confidence");
+        String confStr = "0%";
+        if (conf instanceof Number) {
+            confStr = String.format("%.0f%%", ((Number)conf).doubleValue() * 100);
+        } else if (conf != null) {
+            try {
+                confStr = String.format("%.0f%%", Double.parseDouble(conf.toString()) * 100);
+            } catch (Exception e) { confStr = "0%"; }
+        }
+        sb.append("- **置信度：** ").append(confStr).append("\n");
+        // 理由
+        String reason = null;
+        if ("macro".equals(type)) {
+            // 宏观分析师理由字段特殊
+            Object analysisObj = signal.get("analysis");
+            if (analysisObj instanceof Map) {
+                Object reasoningObj = ((Map<?, ?>) analysisObj).get("reasoning");
+                if (reasoningObj != null) reason = reasoningObj.toString();
+            } else if (analysisObj instanceof String) {
+                try {
+                    Gson gson = new Gson();
+                    Type t = new TypeToken<Map<String, Object>>(){}.getType();
+                    Map<String, Object> analysisMap = gson.fromJson((String) analysisObj, t);
+                    Object reasoningObj = analysisMap.get("reasoning");
+                    if (reasoningObj != null) reason = reasoningObj.toString();
+                } catch (Exception e) { /* ignore */ }
+            }
+        } else if ("risk".equals(type)) {
+            reason = signal.get("analysis") != null ? signal.get("analysis").toString() : null;
+            if (reason == null && signal.get("reasoning") != null) reason = signal.get("reasoning").toString();
+        } else {
+            reason = signal.get("analysis") != null ? signal.get("analysis").toString() : null;
+            if (reason == null && signal.get("thesis") != null) reason = signal.get("thesis").toString();
+        }
+        if (reason != null && !reason.isEmpty()) {
+            sb.append("- **理由：** ").append(reason).append("\n");
+        }
+        sb.append("\n");
+        return sb.toString();
     }
 }
